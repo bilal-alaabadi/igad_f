@@ -68,17 +68,18 @@ const ProductCards = ({ products }) => {
 
                     <div className='relative flex-grow'>
                         <Link to={`/shop/${product._id}`} className="block h-full">
-                            <div className="h-64 w-full overflow-hidden">
-                                <img
-                                    src={product.image?.[0] || "https://via.placeholder.com/300"}
-                                    alt={product.name || "صورة المنتج"}
-                                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                                    onError={(e) => {
-                                        e.target.src = "https://via.placeholder.com/300";
-                                        e.target.alt = "صورة المنتج غير متوفرة";
-                                    }}
-                                />
-                            </div>
+<div className="w-full h-56 overflow-hidden"> {/* ✅ العرض كامل والطول أقصر */}
+    <img
+        src={product.image?.[0] || "https://via.placeholder.com/300"}
+        alt={product.name || "صورة المنتج"}
+        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+        onError={(e) => {
+            e.target.src = "https://via.placeholder.com/300";
+            e.target.alt = "صورة المنتج غير متوفرة";
+        }}
+    />
+</div>
+
                         </Link>
 
                         <div className='absolute top-3 right-3'>
@@ -100,7 +101,8 @@ const ProductCards = ({ products }) => {
                         </div>
                     </div>
 
-                    <div className='p-4'>
+                    {/* ✅ التعديل هنا فقط */}
+                    <div className='p-4 text-center'>
                         <h4 className="text-lg font-semibold mb-1">{product.name || "اسم المنتج"}</h4>
                         <p className="text-gray-500 text-sm mb-3">{product.category || "فئة غير محددة"}</p>
                         

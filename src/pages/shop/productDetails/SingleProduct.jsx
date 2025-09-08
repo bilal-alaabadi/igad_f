@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useFetchProductByIdQuery } from '../../../redux/features/products/productsApi';
 import { addToCart } from '../../../redux/features/cart/cartSlice';
 import ReviewsCard from '../reviews/ReviewsCard';
-import imge from '../../../assets/01.png';
+import imge from '../../../assets/متجر-اكسسوارات.png--تعديل.png';
 
 const SingleProduct = () => {
     const { id } = useParams();
@@ -72,8 +72,8 @@ const SingleProduct = () => {
                         alt="متجر الحناء" 
                         className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-black bg-opacity-30"></div>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-4">
+
+                    {/* <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-4">
                         <h2 className="text-2xl md:text-4xl font-bold mb-4">صفحة المتجر</h2>
                         <div className="flex items-center gap-2 text-sm md:text-base">
                             <span className="hover:text-[#e9b86b] transition-colors">
@@ -84,7 +84,7 @@ const SingleProduct = () => {
                                 <Link to="/shop">المتجر</Link>
                             </span>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
             </section>
 

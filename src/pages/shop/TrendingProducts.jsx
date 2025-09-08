@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import RatingStars from '../../components/RatingStars';
 import { useFetchAllProductsQuery } from '../../redux/features/products/productsApi';
 import { useSelector } from 'react-redux';
 
-const TrendingProducts = () => {
+const TrendingProducts = ({ onProductsLoaded }) => {
     const [visibleProducts, setVisibleProducts] = useState(4);
     const { country } = useSelector((state) => state.cart);
     const { data: { products = [] } = {}, error, isLoading } = useFetchAllProductsQuery({
@@ -12,6 +12,13 @@ const TrendingProducts = () => {
         page: 1,
         limit: 20,
     });
+
+    // ✅ نادِ onProductsLoaded عند انتهاء التحميل (نجاح أو خطأ)
+    useEffect(() => {
+        if (!isLoading && typeof onProductsLoaded === 'function') {
+            onProductsLoaded();
+        }
+    }, [isLoading, onProductsLoaded]);
 
     // تحديد العملة وسعر الصرف
     const currency = country === 'الإمارات' ? 'د.إ' : 'ر.ع.';
@@ -23,11 +30,9 @@ const TrendingProducts = () => {
 
     const getFirstPrice = (product) => {
         if (!product) return 0;
-        
         if (product.category === 'حناء بودر' && product.price && typeof product.price === 'object') {
             return (product.price['500 جرام'] || product.price['1 كيلو'] || 0) * exchangeRate;
         }
-        
         return (product.regularPrice || product.price || 0) * exchangeRate;
     };
 
@@ -50,7 +55,7 @@ const TrendingProducts = () => {
                 منتجات جديدة
             </h2>
             <p className="section__subheader text-lg text-gray-600 mb-12" dir='rtl'>
-                اكتشف سر الجمال الطبيعي مع تشكيلتنا المختارة من الأعشاب والمنتجات التقليدية الأصيلة!
+                لأن التفاصيل تصنع الفرق إكسسوارات مختارة بعناية
             </p>
 
             <div className="mt-12" dir='rtl'>
@@ -73,21 +78,23 @@ const TrendingProducts = () => {
 
                                 <div className="relative flex-grow">
                                     <Link to={`/shop/${product._id}`} className="block h-full">
-                                        <div className="h-80 w-full overflow-hidden">
-                                            <img
-                                                src={product.image?.[0] || "https://via.placeholder.com/300"}
-                                                alt={product.name || "صورة المنتج"}
-                                                className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                                                onError={(e) => {
-                                                    e.target.src = "https://via.placeholder.com/300";
-                                                    e.target.alt = "صورة المنتج غير متوفرة";
-                                                }}
-                                            />
-                                        </div>
+<div className="w-full h-56 overflow-hidden"> {/* ✅ العرض كامل والطول أقصر */}
+    <img
+        src={product.image?.[0] || "https://via.placeholder.com/300"}
+        alt={product.name || "صورة المنتج"}
+        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+        onError={(e) => {
+            e.target.src = "https://via.placeholder.com/300";
+            e.target.alt = "صورة المنتج غير متوفرة";
+        }}
+    />
+</div>
+
                                     </Link>
                                 </div>
 
-                                <div className="p-4">
+                                {/* تم تركيز النص من الاسم وما بعده كما طلبت سابقًا */}
+                                <div className="p-4 text-center">
                                     <h4 className="text-lg font-semibold mb-1 line-clamp-2" title={product.name}>
                                         {product.name || "اسم المنتج"}
                                     </h4>
@@ -122,4 +129,4 @@ const TrendingProducts = () => {
     );
 };
 
-export default TrendingProducts; 
+export default TrendingProducts;

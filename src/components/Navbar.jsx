@@ -5,7 +5,7 @@ import CartModal from '../pages/shop/CartModal';
 import avatarImg from "../assets/avatar.png";
 import { useLogoutUserMutation } from '../redux/features/auth/authApi';
 import { logout } from '../redux/features/auth/authSlice';
-import log from "../assets/Lavin .png";
+import log from "../assets/ΓÇÄΓü_ΓÇÅ_ä_é________º______ó_á_ó_Ñ-_á__-_á_ª__ü_è__í_í._Ñ__._ó_ñ_á__Γü_-removebg-preview.png";
 import { setCountry } from '../redux/features/cart/cartSlice';
 
 const Navbar = () => {
@@ -113,7 +113,7 @@ const Navbar = () => {
     {/* Desktop Navigation */}
     <div className="hidden md:flex items-center justify-between h-20 pb-7">
       <div className="flex items-center gap-8">
-        <select
+        {/* <select
           value={country}
           onChange={handleCountryChange}
           className="p-2 border rounded-md text-black hover:text-[#e9b86b] bg-white relative group"
@@ -121,7 +121,7 @@ const Navbar = () => {
           <option value="عمان">عمان (ر.ع.)</option>
           <option value="الإمارات">الإمارات (د.إ)</option>
           <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#e9b86b] transition-all duration-300 group-hover:w-full"></span>
-        </select>
+        </select> */}
        
         <button 
           onClick={handleCartToggle}
@@ -227,7 +227,7 @@ const Navbar = () => {
           <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#e9b86b] transition-all duration-300 group-hover:w-full"></span>
         </button>
         
-        <select
+        {/* <select
           value={country}
           onChange={handleCountryChange}
           className="w-full p-2 border rounded-md text-black hover:text-[#e9b86b] bg-white relative group"
@@ -235,7 +235,7 @@ const Navbar = () => {
           <option value="عمان">عمان (ر.ع.)</option>
           <option value="الإمارات">الإمارات (د.إ)</option>
           <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#e9b86b] transition-all duration-300 group-hover:w-full"></span>
-        </select>
+        </select> */}
         
         <Link 
           to="/shop" 
