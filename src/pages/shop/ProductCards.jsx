@@ -1,117 +1,157 @@
+// ========================= src/pages/shop/ProductCards.jsx =========================
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import RatingStars from '../../components/RatingStars';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart } from '../../redux/features/cart/cartSlice';
 
 const ProductCards = ({ products }) => {
-    const dispatch = useDispatch();
-    const [addedItems, setAddedItems] = useState({});
-    const { country } = useSelector((state) => state.cart);
-    
-    // Currency and exchange rate
-    const currency = country === 'الإمارات' ? 'د.إ' : 'ر.ع.';
-    const exchangeRate = country === 'الإمارات' ? 9.5 : 1;
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [addedItems, setAddedItems] = useState({});
+  const { country } = useSelector((state) => state.cart);
 
-    const getProductPrice = (product) => {
-        if (!product) return 0;
-        
-        if (typeof product.price === 'object' && product.price !== null) {
-            return (product.price['500 جرام'] || 0) * exchangeRate;
-        }
-        
-        return (product.regularPrice || product.price || 0) * exchangeRate;
-    };
+  const isAEDCountry = country === 'الإمارات' || country === 'دول الخليج';
+  const currency = isAEDCountry ? 'د.إ' : 'ر.ع.';
+  const exchangeRate = isAEDCountry ? 9.5 : 1;
 
-    const handleAddToCart = (productId, product) => {
-        const originalPrice = product.regularPrice || product.price || 0;
-        
-        dispatch(addToCart({
-            ...product,
-            price: originalPrice
-        }));
+  const PERFUME_CATEGORIES = new Set([
+    'عطر','عطور','عطورات','معطر الجسم','معطرات الجسم','بودي ميست','بودي مسك','بخاخ الجسم','معطر الجو'
+  ]);
 
-        setAddedItems(prev => ({ ...prev, [productId]: true }));
-        setTimeout(() => {
-            setAddedItems(prev => ({ ...prev, [productId]: false }));
-        }, 1000);
-    };
+  const isPerfume = (p) => PERFUME_CATEGORIES.has((p?.category || '').trim());
 
-    const renderPrice = (product) => {
-        const price = getProductPrice(product);
-        const oldPrice = product.oldPrice ? product.oldPrice * exchangeRate : null;
+  const getBasePriceForCompare = (p) => {
+    if (!p) return 0;
+    if (typeof p.price === 'object' && p.price) {
+      return p.price['500 جرام'] || p.price['1 كيلو'] || 0;
+    }
+    return p.regularPrice || p.price || 0;
+  };
+
+  const getProductPrice = (p) => getBasePriceForCompare(p) * exchangeRate;
+
+  const handleAddToCart = (id, product) => {
+    if (!isPerfume(product)) {
+      navigate(`/shop/${id}`);
+      return;
+    }
+    const originalPrice = product.regularPrice || product.price || 0;
+    dispatch(addToCart({ ...product, price: originalPrice }));
+    setAddedItems((prev) => ({ ...prev, [id]: true }));
+    setTimeout(() => setAddedItems((prev) => ({ ...prev, [id]: false })), 1000);
+  };
+
+  const renderPrice = (p) => {
+    const price = getProductPrice(p);
+    const oldPrice = p.oldPrice ? p.oldPrice * exchangeRate : null;
+    const hasRealDiscount = p.oldPrice && p.oldPrice > getBasePriceForCompare(p);
+    return (
+      <div className="space-y-1 text-center">
+        <div className="font-medium text-lg">{price.toFixed(2)} {currency}</div>
+        {hasRealDiscount && oldPrice && (
+          <s className="text-[#9B2D1F] text-sm">{oldPrice.toFixed(2)} {currency}</s>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      {products.map((product) => {
+        const basePrice = getBasePriceForCompare(product);
+        const hasRealDiscount = product.oldPrice && product.oldPrice > basePrice;
+        const discountPercentage = hasRealDiscount
+          ? Math.round(((product.oldPrice - basePrice) / product.oldPrice) * 100)
+          : 0;
+
+        const qtyCandidate = [product?.stock, product?.quantity, product?.availableQty, product?.available]
+          .find((v) => Number.isFinite(Number(v)));
+        const availableQty = qtyCandidate !== undefined ? Number(qtyCandidate) : undefined;
+        const isOutOfStock = product?.inStock === false ||
+          (typeof availableQty === 'number' && availableQty <= 0);
 
         return (
-            <div className="space-y-1">
-                <div className="font-medium text-lg">
-                    {price.toFixed(2)} {currency}
-                </div>
-                {oldPrice && (
-                    <s className="text-gray-500 text-sm">{oldPrice.toFixed(2)} {currency}</s>
-                )}
-            </div>
-        );
-    };
+          <div
+            key={product._id}
+            className="product__card bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative flex flex-col h-full"
+          >
+            {hasRealDiscount && (
+              <div className="absolute top-3 left-3 bg-[#e9b86b] text-white text-xs font-bold px-2 py-1 rounded-full z-10">
+                خصم {discountPercentage}%
+              </div>
+            )}
 
-    return (
-        <div className='grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
-            {products.map((product) => (
-                <div 
-                    key={product._id} 
-                    className='product__card bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative flex flex-col h-full'
-                >
-                    {product.oldPrice && (
-                        <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
-                            خصم {Math.round(((product.oldPrice - (product.regularPrice || product.price)) / product.oldPrice) * 100)}%
-                        </div>
+            <div className="relative flex-grow">
+              {!isOutOfStock ? (
+                <Link to={`/shop/${product._id}`} className="block h-full">
+                  {/* ✅ منع قصّ الصورة: حاوية بنسبة ثابتة وصورة contain */}
+                  <div className="w-full aspect-[4/5] bg-white border-b border-gray-100 flex items-center justify-center">
+                    <img
+                      src={product.image?.[0] || "https://via.placeholder.com/300"}
+                      alt={product.name || "صورة المنتج"}
+                      className="max-w-full max-h-full object-contain"
+                      onError={(e) => {
+                        e.target.src = "https://via.placeholder.com/300";
+                        e.target.alt = "صورة المنتج غير متوفرة";
+                      }}
+                    />
+                  </div>
+                </Link>
+              ) : (
+                <div className="block h-full cursor-not-allowed select-none relative" aria-disabled="true">
+                  <div className="w-full aspect-[4/5] bg-white border-b border-gray-100 flex items-center justify-center">
+                    <img
+                      src={product.image?.[0] || "https://via.placeholder.com/300"}
+                      alt={product.name || "صورة المنتج"}
+                      className="max-w-full max-h-full object-contain opacity-70"
+                      onError={(e) => {
+                        e.target.src = "https://via.placeholder.com/300";
+                        e.target.alt = "صورة المنتج غير متوفرة";
+                      }}
+                    />
+                  </div>
+                  <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                    <span className="px-3 py-1 bg-gray-800 text-white text-sm rounded-md">انتهى المنتج</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="absolute top-3 right-3">
+                {!isOutOfStock ? (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleAddToCart(product._id, product);
+                    }}
+                    className={`p-2 text-white rounded-full shadow-md transition-all duration-300 ${
+                      addedItems[product._id] ? 'bg-green-500' : 'bg-[#e9b86b]'
+                    }`}
+                    aria-label="إضافة إلى السلة"
+                  >
+                    {addedItems[product._id] ? (
+                      <i className="ri-check-line"></i>
+                    ) : (
+                      <i className="ri-shopping-cart-2-line"></i>
                     )}
+                  </button>
+                ) : (
+                  <span className="px-2 py-1 bg-gray-400 text-white text-xs rounded-md select-none">
+                    انتهى المنتج
+                  </span>
+                )}
+              </div>
+            </div>
 
-                    <div className='relative flex-grow'>
-                        <Link to={`/shop/${product._id}`} className="block h-full">
-<div className="w-full h-56 overflow-hidden"> {/* ✅ العرض كامل والطول أقصر */}
-    <img
-        src={product.image?.[0] || "https://via.placeholder.com/300"}
-        alt={product.name || "صورة المنتج"}
-        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-        onError={(e) => {
-            e.target.src = "https://via.placeholder.com/300";
-            e.target.alt = "صورة المنتج غير متوفرة";
-        }}
-    />
-</div>
-
-                        </Link>
-
-                        <div className='absolute top-3 right-3'>
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    handleAddToCart(product._id, product);
-                                }}
-                                className={`p-2 text-white rounded-full shadow-md transition-all duration-300 ${
-                                    addedItems[product._id] ? 'bg-green-500' : 'bg-[#e9b86b] '
-                                }`}
-                            >
-                                {addedItems[product._id] ? (
-                                    <i className="ri-check-line"></i>
-                                ) : (
-                                    <i className="ri-shopping-cart-2-line"></i>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* ✅ التعديل هنا فقط */}
-                    <div className='p-4 text-center'>
-                        <h4 className="text-lg font-semibold mb-1">{product.name || "اسم المنتج"}</h4>
-                        <p className="text-gray-500 text-sm mb-3">{product.category || "فئة غير محددة"}</p>
-                        
-                        {renderPrice(product)}
-                    </div>
-                </div>
-            ))}
-        </div> 
-    );
+            <div className="p-4 text-center">
+              <h4 className="text-lg font-semibold mb-1">{product.name || "اسم المنتج"}</h4>
+              <p className="text-gray-500 text-sm mb-3">{product.category || "فئة غير محددة"}</p>
+              {renderPrice(product)}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 export default ProductCards;

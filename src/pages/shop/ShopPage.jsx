@@ -1,4 +1,6 @@
+// ShopPage.jsx
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import ProductCards from './ProductCards';
 import ShopFiltering from './ShopFiltering';
 import { useFetchAllProductsQuery } from '../../redux/features/products/productsApi';
@@ -13,6 +15,15 @@ const ShopPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [ProductsPerPage] = useState(8);
   const [showFilters, setShowFilters] = useState(false);
+  const [searchParams] = useSearchParams();
+
+  // ✅ عند الدخول من الهيرو: اقرأ category من الرابط وطبّق الفلتر
+  useEffect(() => {
+    const qCat = searchParams.get('category'); // مثال: "حقائب"
+    if (qCat && filters.categories.includes(qCat)) {
+      setFiltersState((prev) => ({ ...prev, category: qCat }));
+    }
+  }, [searchParams]);
 
   const { category } = filtersState;
 
@@ -47,9 +58,6 @@ const ShopPage = () => {
       {/* Hero */}
       <section className="relative w-full h-64 md:h-80 lg:h-96 overflow-hidden">
         <img src={imge} alt="متجر igad" className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white text-center">متجرنا</h2>
-        </div>
       </section>
 
       {/* Content */}
@@ -78,14 +86,6 @@ const ShopPage = () => {
 
           {/* Products */}
           <div className="md:w-3/4">
-            {/* <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-medium text-gray-700">
-                {totalProducts
-                  ? <>عرض {startProduct}-{endProduct} من {totalProducts} منتج</>
-                  : 'لا توجد منتجات'}
-              </h3>
-            </div> */}
-
             {products.length > 0 ? (
               <>
                 <ProductCards products={products} />

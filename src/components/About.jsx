@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import ipadImg from '../assets/Screenshot 2025-08-08 213536.png'; // غير المسار حسب صورتك
+import ipadImg from '../assets/product_no_bg.png'; // غير المسار حسب صورتك
 
 const About = () => {
   return (
@@ -8,13 +8,13 @@ const About = () => {
       <section className="max-w-6xl mx-auto py-16 px-4 md:px-8">
         <div className="flex flex-col md:flex-row-reverse items-center gap-10">
           {/* الصورة */}
-          {/* <div className="md:w-1/2">
+          <div className="md:w-1/2">
             <img
               src={ipadImg}
               alt="إكسسوارات آيباد igad"
-              className="w-full max-w-md mx-auto rounded-xl shadow-lg transform scale-105"
+              className="w-full max-w-md mx-auto rounded-xl  transform scale-105"
             />
-          </div> */}
+          </div>
 
           {/* المحتوى النصي */}
           <div className="md:w-1/2">

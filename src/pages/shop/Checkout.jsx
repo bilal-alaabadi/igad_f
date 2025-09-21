@@ -1,221 +1,267 @@
-import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+// ========================= src/pages/checkout/Checkout.jsx =========================
+import React, { useEffect, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
+import { useNavigate, Link } from "react-router-dom";
 import { RiBankCardLine } from "react-icons/ri";
-import { getBaseUrl } from '../../utils/baseURL';
-import { useNavigate } from 'react-router-dom';
+import { getBaseUrl } from "../../utils/baseURL";
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const [error, setError] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [wilayat, setWilayat] = useState('');
-  const [description, setDescription] = useState('');
 
-  const { products, totalPrice, country } = useSelector((state) => state.cart);
+  // من السلة
+  const { products, totalPrice, country, shippingFee } = useSelector((state) => state.cart);
 
-  const baseShippingFee = country === 'الإمارات'? 4 : 2;
-  const currency = country === 'الإمارات' ? 'د.إ' : 'ر.ع.';
-  const exchangeRate = country === 'الإمارات' ? 9.5 : 1;
-  const shippingFee = baseShippingFee * exchangeRate;
+  // تحويل العملة للعرض فقط
+  const currency = country === "الإمارات" ? "د.إ" : "ر.ع.";
+  const exchangeRate = country === "الإمارات" ? 9.5 : 1;
 
+  // إجمالي الكمية لعرض الملخص
+  const totalQty = useMemo(
+    () => (Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 0), 0) : 0),
+    [products]
+  );
+
+  // فورم معلومات العميل
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [wilayat, setWilayat] = useState("");
+  const [address, setAddress] = useState(""); // العنوان التفصيلي
+  const [error, setError] = useState("");
+
+  // إذا كانت السلة فارغة نرجع للمتجر
   useEffect(() => {
-    if (products.length === 0) {
-      setError("لا توجد منتجات في السلة. الرجاء إضافة منتجات قبل المتابعة إلى الدفع.");
+    if (!products || products.length === 0) {
+      setError("لا توجد منتجات في السلة.");
     } else {
-      setError('');
+      setError("");
     }
   }, [products]);
+
+  // مجموعات الأسعار للعرض
+  const subTotalDisplay = (totalPrice * exchangeRate).toFixed(2);
+  const shippingDisplay = (shippingFee * exchangeRate).toFixed(2);
+  const grandTotalDisplay = ((totalPrice + shippingFee) * exchangeRate).toFixed(2);
 
   const makePayment = async (e) => {
     e.preventDefault();
 
-    if (products.length === 0) {
-      setError("لا توجد منتجات في السلة. الرجاء إضافة منتجات قبل المتابعة إلى الدفع.");
+    if (!products || products.length === 0) {
+      setError("لا توجد منتجات في السلة. الرجاء إضافة منتجات قبل المتابعة.");
       return;
     }
 
-    if (!customerName || !customerPhone || !country || !wilayat || !email) {
-      setError("الرجاء إدخال جميع المعلومات المطلوبة (الاسم، رقم الهاتف، الإيميل، البلد، العنوان)");
+    if (!customerName || !customerPhone || !email || !wilayat || !address) {
+      setError("الرجاء إدخال جميع الحقول: الاسم، الهاتف، الإيميل، الولاية/المنطقة، العنوان.");
       return;
     }
 
-    // ملاحظة: لا نقوم بتعديل حالة السلة هنا إطلاقاً (لا تفريغ تلقائي).
-
-    const body = {
-      products: products.map(product => ({
-        _id: product._id,
-        name: product.name,
-        price: product.price,
-        quantity: product.quantity,
-        image: Array.isArray(product.image) ? product.image[0] : product.image
+    // تجهيز جسم الطلب — نرسل السعر الأصلي بدون تحويل، ونرفق اختيارات الحجم/اللون
+    const payload = {
+      products: products.map((p) => ({
+        _id: p._id,
+        name: p.name,
+        price: p.price, // بدون تحويل
+        quantity: p.quantity,
+        image: Array.isArray(p.image) ? p.image[0] : p.image,
+        selectedSize: p.selectedSize || "",
+        selectedColor: p.selectedColor || "",
       })),
       customerName,
       customerPhone,
-      country,
+      email,
+      country,            // من السلة
       wilayat,
-      description,
-      email
+      address,            // العنوان التفصيلي
+      shippingFee,        // بدون تحويل
+      note: "",           // حقل إضافي إن رغبت مستقبلاً
     };
 
     try {
-      const response = await fetch(`${getBaseUrl()}/api/orders/create-checkout-session`, {
+      const res = await fetch(`${getBaseUrl()}/api/orders/create-checkout-session`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create checkout session");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "فشل إنشاء جلسة الدفع");
       }
 
-      const session = await response.json();
-
-      if (session.paymentLink) {
-        // لا تقم بتغيير السلة — فقط نوجّه المستخدم لصفحة الدفع
-        window.location.href = session.paymentLink;
+      const data = await res.json();
+      if (data?.paymentLink) {
+        window.location.href = data.paymentLink; // الذهاب لبوابة الدفع
       } else {
-        setError("حدث خطأ أثناء إنشاء رابط الدفع. الرجاء المحاولة مرة أخرى.");
+        setError("تعذر إنشاء رابط الدفع. حاول مرة أخرى.");
       }
-    } catch (error) {
-      console.error("Error during payment process:", error);
-      setError(error.message || "حدث خطأ أثناء عملية الدفع. الرجاء المحاولة مرة أخرى.");
+    } catch (err) {
+      console.error("Checkout error:", err);
+      setError(err.message || "حدث خطأ أثناء عملية الدفع.");
     }
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto flex flex-col md:flex-row gap-8">
-      {/* تفاصيل الفاتورة */}
+    <div className="p-4 md:p-6 max-w-6xl mx-auto flex flex-col md:flex-row gap-8" dir="rtl">
+      {/* عمود الفورم */}
       <div className="flex-1">
-        <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">تفاصيل الفاتورة</h1>
-        {error && <div className="text-red-500 mb-4">{error}</div>}
-        
-        <form onSubmit={makePayment} className="space-y-4 md:space-y-6" dir="rtl">
-          <div className="space-y-4">
+        <h1 className="text-2xl font-bold mb-4">تفاصيل الفاتورة</h1>
+
+        {error && (
+          <div className="mb-4 text-red-600 bg-red-50 border border-red-200 rounded p-3">
+            {error}
+          </div>
+        )}
+
+        {(!products || products.length === 0) && (
+          <div className="bg-white border rounded p-4">
+            <p className="mb-3">سلة التسوق فارغة.</p>
+            <Link to="/shop" className="text-[#e9b86b] hover:opacity-80">العودة للمتجر</Link>
+          </div>
+        )}
+
+        {products && products.length > 0 && (
+          <form onSubmit={makePayment} className="space-y-4">
             <div>
-              <label className="block text-gray-700 mb-2">الاسم الكامل</label>
+              <label className="block mb-1 font-medium">الاسم الكامل</label>
               <input
                 type="text"
-                className="w-full p-2 border rounded-md"
+                className="w-full border rounded-md p-2"
+                placeholder="اكتب اسمك الكامل"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                required
               />
             </div>
 
             <div>
-              <label className="block text-gray-700 mb-2">رقم الهاتف</label>
+              <label className="block mb-1 font-medium">رقم الهاتف</label>
               <input
                 type="tel"
-                className="w-full p-2 border rounded-md"
+                className="w-full border rounded-md p-2"
+                placeholder="9xxxxxxxx"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
-                required
               />
             </div>
 
             <div>
-              <label className="block text-gray-700 mb-2">البريد الإلكتروني</label>
+              <label className="block mb-1 font-medium">البريد الإلكتروني</label>
               <input
                 type="email"
-                className="w-full p-2 border rounded-md"
+                className="w-full border rounded-md p-2"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="example@email.com"
               />
             </div>
 
-            <div>
-              <label className="block text-gray-700 mb-2">البلد</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded-md bg-gray-100"
-                value={country}
-                readOnly
-              />
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1 font-medium">الدولة</label>
+                <input
+                  type="text"
+                  className="w-full border rounded-md p-2 bg-gray-50"
+                  value={country}
+                  readOnly
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium">الولاية / المنطقة</label>
+                <input
+                  type="text"
+                  className="w-full border rounded-md p-2"
+                  placeholder="مثال: مسقط"
+                  value={wilayat}
+                  onChange={(e) => setWilayat(e.target.value)}
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-gray-700 mb-2">العنوان</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded-md"
-                value={wilayat}
-                onChange={(e) => setWilayat(e.target.value)}
-                required
-                placeholder="الرجاء إدخال العنوان كاملاً"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 mb-2">وصف إضافي (اختياري)</label>
+              <label className="block mb-1 font-medium">العنوان التفصيلي</label>
               <textarea
-                className="w-full p-2 border rounded-md"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="أي ملاحظات أو تفاصيل إضافية عن الطلب"
-                rows="3"
+                className="w-full border rounded-md p-2"
+                rows={3}
+                placeholder="الحي، الشارع، رقم المنزل... وأي ملاحظات للتوصيل"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
               />
             </div>
-          </div>
 
-          <button
-            type="submit"
-            className="bg-[#e9b86b] text-white px-6 py-3 rounded-md w-full"
-            disabled={products.length === 0}
-          >
-            إتمام الطلب
-          </button>
-        </form>
+            <button
+              type="submit"
+              className="w-full bg-[#e9b86b] text-white px-6 py-3 rounded-md hover:opacity-95 transition"
+            >
+              إتمام الطلب <RiBankCardLine className="inline-block text-xl mr-1 align-[-3px]" />
+            </button>
+          </form>
+        )}
       </div>
 
-      {/* تفاصيل الطلب */}
-      <div className="w-full md:w-1/3 p-4 md:p-6 bg-white rounded-lg shadow-lg border border-gray-200">
-        <h2 className="text-lg md:text-xl font-bold mb-4 text-gray-800">طلبك</h2>
-        <div className="space-y-4">
-          {products.map((product) => (
-            <div key={product._id} className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-gray-700">{product.name} × {product.quantity}</span>
-              <span className="text-gray-900 font-medium">
-                {(product.price * product.quantity * exchangeRate).toFixed(2)} {currency}
-              </span>
+      {/* عمود ملخص الطلب */}
+      <aside className="w-full md:w-1/3 p-4 md:p-6 bg-white rounded-lg shadow-lg border border-gray-200">
+        <h2 className="text-xl font-bold mb-4 text-gray-800">طلبك</h2>
+
+        {products && products.length > 0 ? (
+          <>
+            <div className="space-y-4">
+              {products.map((p) => (
+                <div key={`${p._id}-${p.selectedSize || ''}-${p.selectedColor || ''}`} className="py-2 border-b border-gray-100">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700">
+                      {p.name} × {p.quantity}
+                    </span>
+                    <span className="text-gray-900 font-medium">
+                      {(p.price * p.quantity * exchangeRate).toFixed(2)} {currency}
+                    </span>
+                  </div>
+
+                  {(p.selectedSize || p.selectedColor) && (
+                    <div className="text-xs text-gray-600 mt-1">
+                      {p.selectedSize && <span className="mr-2">الحجم: {p.selectedSize}</span>}
+                      {p.selectedColor && <span>اللون: {p.selectedColor}</span>}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
 
-          <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-            <span className="text-gray-800">رسوم الشحن</span>
-            <p className="text-gray-900">{currency}{shippingFee.toFixed(2)}</p>
-          </div>
+            <div className="mt-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-700">المجموع الفرعي</span>
+                <span className="font-medium">{subTotalDisplay} {currency}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700">رسوم الشحن</span>
+                <span className="font-medium">{shippingDisplay} {currency}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t">
+                <span className="text-gray-800 font-semibold">الإجمالي</span>
+                <span className="text-gray-900 font-bold">{grandTotalDisplay} {currency}</span>
+              </div>
+            </div>
 
-          <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-            <span className="text-gray-800 font-semibold">الإجمالي</span>
-            <p className="text-gray-900 font-bold">
-              {currency}{((totalPrice + baseShippingFee) * exchangeRate).toFixed(2)}
-            </p>
-          </div>
-        </div>
+            <button
+              onClick={makePayment}
+              className="mt-6 w-full bg-[#e9b86b] text-white px-4 py-2 rounded-md transition hover:opacity-95 flex items-center justify-center gap-2"
+            >
+              <RiBankCardLine className="text-xl" />
+              الدفع باستخدام ثواني
+            </button>
 
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">دفع ثواني</h3>
-          <button
-            onClick={makePayment}
-            className="w-full bg-[#e9b86b] text-white px-4 py-2 rounded-md transition-colors duration-300 flex items-center justify-center gap-2"
-            disabled={products.length === 0}
-          >
-            <RiBankCardLine className="text-xl" />
-            <span>الدفع باستخدام ثواني</span>
-          </button>
-          <p className="mt-4 text-sm text-gray-600">
-            سيتم استخدام بياناتك الشخصية لمعالجة طلبك، ودعم تجربتك عبر هذا الموقع، ولأغراض أخرى موضحة في{" "}
-            <a className="text-blue-600 hover:underline">سياسة الخصوصية</a>.
-          </p>
-        </div>
-      </div>
+            <Link
+              to="/shop"
+              className="mt-3 block text-center text-[#e9b86b] hover:opacity-80"
+            >
+              متابعة التسوق
+            </Link>
+          </>
+        ) : (
+          <p className="text-gray-600">لا توجد منتجات في السلة.</p>
+        )}
+      </aside>
     </div>
   );
 };

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import Banner from './Banner';
 import TrendingProducts from '../shop/TrendingProducts';
 import log from "../../assets/ΓÇÄΓü_ΓÇÅ_ä_é________º______ó_á_ó_Ñ-_á__-_á_ª__ü_è__í_í._Ñ__._ó_ñ_á__Γü_-removebg-preview-removebg-preview.png"; // شعار الأنثور
+import HeroSection from './HeroSection';
 
 const Home = () => {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -56,6 +57,7 @@ const Home = () => {
 
       {/* محتوى الصفحة */}
       <Banner />
+      <HeroSection />
       <TrendingProducts onProductsLoaded={() => setIsLoadingProducts(false)} />
     </>
   );
